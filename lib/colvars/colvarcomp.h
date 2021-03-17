@@ -1344,6 +1344,71 @@ public:
 };
 
 
+class colvar::euler_phi
+  : public colvar::orientation
+{
+public:
+  euler_phi(std::string const &conf);
+  euler_phi();
+  virtual int init(std::string const &conf);
+  virtual ~euler_phi() {}
+  virtual void calc_value();
+  virtual void calc_gradients();
+  virtual void apply_force(colvarvalue const &force);
+  virtual cvm::real dist2(colvarvalue const &x1,
+                          colvarvalue const &x2) const;
+  virtual colvarvalue dist2_lgrad(colvarvalue const &x1,
+                                  colvarvalue const &x2) const;
+  virtual colvarvalue dist2_rgrad(colvarvalue const &x1,
+                                  colvarvalue const &x2) const;
+  /// Redefined to handle the 2*PI periodicity
+  virtual void wrap(colvarvalue &x_unwrapped) const;
+};
+
+
+class colvar::euler_psi
+  : public colvar::orientation
+{
+public:
+  euler_psi(std::string const &conf);
+  euler_psi();
+  virtual int init(std::string const &conf);
+  virtual ~euler_psi() {}
+  virtual void calc_value();
+  virtual void calc_gradients();
+  virtual void apply_force(colvarvalue const &force);
+  virtual cvm::real dist2(colvarvalue const &x1,
+                          colvarvalue const &x2) const;
+  virtual colvarvalue dist2_lgrad(colvarvalue const &x1,
+                                  colvarvalue const &x2) const;
+  virtual colvarvalue dist2_rgrad(colvarvalue const &x1,
+                                  colvarvalue const &x2) const;
+  /// Redefined to handle the 2*PI periodicity
+  virtual void wrap(colvarvalue &x_unwrapped) const;
+};
+
+
+class colvar::euler_theta
+  : public colvar::orientation
+{
+public:
+  euler_theta(std::string const &conf);
+  euler_theta();
+  virtual int init(std::string const &conf);
+  virtual ~euler_theta() {}
+  virtual void calc_value();
+  virtual void calc_gradients();
+  virtual void apply_force(colvarvalue const &force);
+  // theta angle is a scalar variable and not periodic
+  // we need to override the virtual functions from orientation
+  virtual cvm::real dist2(colvarvalue const &x1,
+                          colvarvalue const &x2) const;
+  virtual colvarvalue dist2_lgrad(colvarvalue const &x1,
+                                  colvarvalue const &x2) const;
+  virtual colvarvalue dist2_rgrad(colvarvalue const &x1,
+                                  colvarvalue const &x2) const;
+};
+
 
 /// \brief Colvar component: root mean square deviation (RMSD) of a
 /// group with respect to a set of reference coordinates; uses \link
@@ -1681,11 +1746,20 @@ public:
 
 protected:
 
-  /// Identifier of the map object (as used by the simulation engine)
-  std::string map_name;
+  /// String identifier of the map object (as used by the simulation engine)
+  std::string volmap_name;
+
+  /// Numeric identifier of the map object (as used by the simulation engine)
+  int volmap_id;
 
   /// Index of the map objet in the proxy arrays
   int volmap_index;
+
+  /// Group of atoms selected internally (optional)
+  cvm::atom_group *atoms;
+
+  /// Weights assigned to each atom (default: uniform weights)
+  std::vector<cvm::real> atom_weights;
 };
 
 

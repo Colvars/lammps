@@ -122,15 +122,21 @@ cvm::real colvar_grid_scalar::entropy() const
 
 
 colvar_grid_gradient::colvar_grid_gradient()
-  : colvar_grid<cvm::real>(), samples(NULL)
+  : colvar_grid<cvm::real>(),
+    samples(NULL),
+    weights(NULL)
 {}
 
 colvar_grid_gradient::colvar_grid_gradient(std::vector<int> const &nx_i)
-  : colvar_grid<cvm::real>(nx_i, 0.0, nx_i.size()), samples(NULL)
+  : colvar_grid<cvm::real>(nx_i, 0.0, nx_i.size()),
+    samples(NULL),
+    weights(NULL)
 {}
 
 colvar_grid_gradient::colvar_grid_gradient(std::vector<colvar *> &colvars)
-  : colvar_grid<cvm::real>(colvars, 0.0, colvars.size()), samples(NULL)
+  : colvar_grid<cvm::real>(colvars, 0.0, colvars.size()),
+    samples(NULL),
+    weights(NULL)
 {}
 
 void colvar_grid_gradient::write_1D_integral(std::ostream &os)
@@ -202,7 +208,7 @@ integrate_potential::integrate_potential(std::vector<colvar *> &colvars, colvar_
     // Compute inverse of Laplacian diagonal for Jacobi preconditioning
     // For now all code related to preconditioning is commented out
     // until a method better than Jacobi is implemented
-//     cvm::log("Preparing inverse diagonal for preconditioning...");
+//     cvm::log("Preparing inverse diagonal for preconditioning...\n");
 //     inv_lap_diag.resize(nt);
 //     std::vector<cvm::real> id(nt), lap_col(nt);
 //     for (int i = 0; i < nt; i++) {
@@ -213,7 +219,7 @@ integrate_potential::integrate_potential(std::vector<colvar *> &colvars, colvar_
 //       id[i] = 0.;
 //       inv_lap_diag[i] = 1. / lap_col[i];
 //     }
-//     cvm::log("Done.");
+//     cvm::log("Done.\n");
   }
 }
 

@@ -151,6 +151,12 @@ public:
   }
 
   /// Reimplemented to work around MS compiler issues
+  static inline real asin(real const &x)
+  {
+    return ::asin(static_cast<double>(x));
+  }
+
+  /// Reimplemented to work around MS compiler issues
   static inline real acos(real const &x)
   {
     return ::acos(static_cast<double>(x));
@@ -684,6 +690,9 @@ public:
   /// correctly
   static rvector position_distance(atom_pos const &pos1,
                                    atom_pos const &pos2);
+
+  /// \brief Names of .ndx files that have been loaded
+  std::vector<std::string> index_file_names;
 
   /// \brief Names of groups from one or more Gromacs .ndx files
   std::vector<std::string> index_group_names;

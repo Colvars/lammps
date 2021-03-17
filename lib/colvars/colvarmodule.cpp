@@ -58,7 +58,7 @@ colvarmodule::colvarmodule(colvarproxy *proxy_in)
   }
 
 #if (__cplusplus >= 201103L)
-  cvm::log("This version was built with the C++11 standard or higher.");
+  cvm::log("This version was built with the C++11 standard or higher.\n");
 #else
   cvm::log("This version was built without the C++11 standard: some features are disabled.\n"
     "Please see the following link for details:\n"
@@ -186,6 +186,7 @@ std::istream & colvarmodule::getline(std::istream &is, std::string &line)
     size_t const sz = l.size();
     if (sz > 0) {
       if (l[sz-1] == '\r' ) {
+        // Replace Windows newlines with Unix newlines
         line = l.substr(0, sz-1);
       } else {
         line = l;
@@ -200,6 +201,7 @@ std::istream & colvarmodule::getline(std::istream &is, std::string &line)
 
 int colvarmodule::parse_config(std::string &conf)
 {
+  // Auto-generated additional configuration
   extra_conf.clear();
 
   // Check that the input has matching braces
@@ -207,6 +209,9 @@ int colvarmodule::parse_config(std::string &conf)
     return cvm::error("Error: unmatched curly braces in configuration.\n",
                       INPUT_ERROR);
   }
+
+  // Check that the input has only ASCII characters, and warn otherwise
+  colvarparse::check_ascii(conf);
 
   // Parse global options
   if (catch_input_errors(parse_global_params(conf))) {
@@ -472,7 +477,7 @@ int colvarmodule::parse_biases(std::string const &conf)
   if (use_scripted_forces) {
     cvm::log(cvm::line_marker);
     cvm::increase_depth();
-    cvm::log("User forces script will be run at each bias update.");
+    cvm::log("User forces script will be run at each bias update.\n");
     cvm::decrease_depth();
   }
 
@@ -753,6 +758,9 @@ int colvarmodule::calc()
   cvm::decrease_depth();
 
   error_code |= end_of_step();
+
+  // TODO move this to a base-class proxy method that calls this function
+  error_code |= proxy->end_of_step();
 
   return error_code;
 }
@@ -1769,6 +1777,8 @@ int cvm::read_index_file(char const *filename)
     cvm::error("Error: in opening index file \""+
                std::string(filename)+"\".\n",
                FILE_ERROR);
+  } else {
+    index_file_names.push_back(std::string(filename));
   }
 
   while (is.good()) {
@@ -1861,6 +1871,7 @@ int colvarmodule::reset_index_groups()
   }
   index_group_names.clear();
   index_groups.clear();
+  index_file_names.clear();
   return COLVARS_OK;
 }
 
@@ -1924,48 +1935,75 @@ int cvm::load_coords_xyz(char const *filename,
   std::string line;
   cvm::real x = 0.0, y = 0.0, z = 0.0;
 
+  std::string const error_msg("Error: cannot parse XYZ file \""+
+                              std::string(filename)+"\".\n");
+
   if ( ! (xyz_is >> natoms) ) {
-    cvm::error("Error: cannot parse XYZ file "
-               + std::string(filename) + ".\n", INPUT_ERROR);
+    return cvm::error(error_msg, INPUT_ERROR);
   }
 
   ++xyz_reader_use_count;
   if (xyz_reader_use_count < 2) {
-    cvm::log("Warning: beginning from 2019-11-26 the XYZ file reader assumes Angstrom units.");
+    cvm::log("Warning: beginning from 2019-11-26 the XYZ file reader assumes Angstrom units.\n");
   }
 
-  // skip comment line
-  cvm::getline(xyz_is, line);
-  cvm::getline(xyz_is, line);
-  xyz_is.width(255);
-  std::vector<atom_pos>::iterator pos_i = pos->begin();
+  if (xyz_is.good()) {
+    // skip comment line
+    cvm::getline(xyz_is, line);
+    cvm::getline(xyz_is, line);
+    xyz_is.width(255);
+  } else {
+    return cvm::error(error_msg, INPUT_ERROR);
+  }
 
+  std::vector<atom_pos>::iterator pos_i = pos->begin();
+  size_t xyz_natoms = 0;
   if (pos->size() != natoms) { // Use specified indices
     int next = 0; // indices are zero-based
     std::vector<int>::const_iterator index = atoms->sorted_ids().begin();
-    for ( ; pos_i != pos->end() ; pos_i++, index++) {
 
+    for ( ; pos_i != pos->end() ; pos_i++, index++) {
       while ( next < *index ) {
         cvm::getline(xyz_is, line);
         next++;
       }
-      xyz_is >> symbol;
-      xyz_is >> x >> y >> z;
-      // XYZ files are assumed to be in Angstrom (as eg. VMD will)
-      (*pos_i)[0] = proxy->angstrom_to_internal(x);
-      (*pos_i)[1] = proxy->angstrom_to_internal(y);
-      (*pos_i)[2] = proxy->angstrom_to_internal(z);
+      if (xyz_is.good()) {
+        xyz_is >> symbol;
+        xyz_is >> x >> y >> z;
+        // XYZ files are assumed to be in Angstrom (as eg. VMD will)
+        (*pos_i)[0] = proxy->angstrom_to_internal(x);
+        (*pos_i)[1] = proxy->angstrom_to_internal(y);
+        (*pos_i)[2] = proxy->angstrom_to_internal(z);
+        xyz_natoms++;
+      } else {
+        return cvm::error(error_msg, INPUT_ERROR);
+      }
     }
+
   } else {          // Use all positions
+
     for ( ; pos_i != pos->end() ; pos_i++) {
-      xyz_is >> symbol;
-      xyz_is >> x >> y >> z;
-      (*pos_i)[0] = proxy->angstrom_to_internal(x);
-      (*pos_i)[1] = proxy->angstrom_to_internal(y);
-      (*pos_i)[2] = proxy->angstrom_to_internal(z);
+      if (xyz_is.good()) {
+        xyz_is >> symbol;
+        xyz_is >> x >> y >> z;
+        (*pos_i)[0] = proxy->angstrom_to_internal(x);
+        (*pos_i)[1] = proxy->angstrom_to_internal(y);
+        (*pos_i)[2] = proxy->angstrom_to_internal(z);
+        xyz_natoms++;
+      } else {
+        return cvm::error(error_msg, INPUT_ERROR);
+      }
     }
   }
-  return (cvm::get_error() ? COLVARS_ERROR : COLVARS_OK);
+
+  if (xyz_natoms != pos->size()) {
+    return cvm::error("Error: The number of positions read from file \""+
+                      std::string(filename)+"\" does not match the number of "+
+                      "positions required: "+cvm::to_str(xyz_natoms)+" vs. "+
+                      cvm::to_str(pos->size())+".\n", INPUT_ERROR);
+  }
+
+  return COLVARS_OK;
 }
 
 
